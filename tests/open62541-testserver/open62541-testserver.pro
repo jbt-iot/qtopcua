@@ -9,6 +9,7 @@ DEPENDPATH += INCLUDEPATH
 CONFIG += c++11 console
 
 QT += opcua-private
+QT -= gui
 
 qtConfig(open62541):!qtConfig(system-open62541) {
     qtConfig(mbedtls):{
