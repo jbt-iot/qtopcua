@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS +=  qopcuaclient connection clientSetupInCpp security
+SUBDIRS +=  qopcuaclient connection security
 
 QT_FOR_CONFIG += opcua-private core-private
 
