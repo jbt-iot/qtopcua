@@ -92,7 +92,7 @@ UA_NodeId Open62541Utils::nodeIdFromQString(const QString &name)
         return UA_NODEID_GUID(namespaceIndex, guid);
     }
     case 'b': {
-        const QByteArray temp = QByteArray::fromBase64(identifierString);
+        const QByteArray temp = QByteArray::fromBase64(identifierString.toUtf8().constData());
         if (temp.size() > 0) {
             return UA_NODEID_BYTESTRING_ALLOC(namespaceIndex, temp.constData());
         }
