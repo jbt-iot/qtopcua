@@ -108,14 +108,17 @@ UA_NodeId Open62541Utils::nodeIdFromQString(const QString &name)
 
 QString Open62541Utils::nodeIdToQString(UA_NodeId id)
 {
-    QString result = QString("ns=%1;").arg(id.namespaceIndex);
+    QString result{QString("ns=")};
+    result.append(QString::number(id.namespaceIndex));
+    result.append(";");
 
     switch (id.identifierType) {
     case UA_NODEIDTYPE_NUMERIC:
-        result.append(QString("i=%1").arg(id.identifier.numeric));
+        result.append(QString("i="));
+        result.append(QString::number(id.identifier.numeric));
         break;
     case UA_NODEIDTYPE_STRING:
-        result.append(String("s="));
+        result.append(QString("s="));
         result.append(QString::fromLocal8Bit(reinterpret_cast<char *>(id.identifier.string.data),
                                              id.identifier.string.length));
         break;
