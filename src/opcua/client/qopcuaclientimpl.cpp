@@ -78,6 +78,7 @@ void QOpcUaClientImpl::connectBackendWithClient(QOpcUaBackend *backend)
     connect(backend, &QOpcUaBackend::stateAndOrErrorChanged, this, &QOpcUaClientImpl::stateAndOrErrorChanged);
     connect(backend, &QOpcUaBackend::attributeWritten, this, &QOpcUaClientImpl::handleAttributeWritten);
     connect(backend, &QOpcUaBackend::dataChangeOccurred, this, &QOpcUaClientImpl::handleDataChangeOccurred);
+    connect(backend, &QOpcUaBackend::dataChangesOccurred, this, &QOpcUaClientImpl::handleDataChangesOccurred);
     connect(backend, &QOpcUaBackend::monitoringEnableDisable, this, &QOpcUaClientImpl::handleMonitoringEnableDisable);
     connect(backend, &QOpcUaBackend::monitoringStatusChanged, this, &QOpcUaClientImpl::handleMonitoringStatusChanged);
     connect(backend, &QOpcUaBackend::methodCallFinished, this, &QOpcUaClientImpl::handleMethodCallFinished);
@@ -116,6 +117,25 @@ void QOpcUaClientImpl::handleDataChangeOccurred(quint64 handle, const QOpcUaRead
     auto it = m_handles.constFind(handle);
     if (it != m_handles.constEnd() && !it->isNull())
         emit (*it)->dataChangeOccurred(value.attribute(), value);
+}
+
+void QOpcUaClientImpl::handleDataChangesOccurred(QVector<quint64> handles, QVector<QOpcUaReadResult> results)
+{
+    QVector<QOpcUaReadResult> temp_results;
+    results.reserve(results.size());
+
+    for(size_t index = 0; index < handles.size(); ++index)
+    {
+        auto it = m_handles.constFind(handles[index]);
+        if (it != m_handles.constEnd() && !it->isNull())
+        {
+            QOpcUaReadResult readRes(results[index]);
+            readRes.setNodeId((*it)->nodeId());
+            temp_results.push_back(readRes);
+        }
+    }
+
+    emit dataChangesOccurred(temp_results);
 }
 
 void QOpcUaClientImpl::handleMonitoringEnableDisable(quint64 handle, QOpcUa::NodeAttribute attr, bool subscribe, QOpcUaMonitoringParameters status)

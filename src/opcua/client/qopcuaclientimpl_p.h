@@ -101,6 +101,7 @@ private Q_SLOTS:
     void handleAttributesRead(quint64 handle, QVector<QOpcUaReadResult> attr, QOpcUa::UaStatusCode serviceResult);
     void handleAttributeWritten(quint64 handle, QOpcUa::NodeAttribute attr, const QVariant &value, QOpcUa::UaStatusCode statusCode);
     void handleDataChangeOccurred(quint64 handle, const QOpcUaReadResult &value);
+    void handleDataChangesOccurred(QVector<quint64> handles, QVector<QOpcUaReadResult> results);
     void handleMonitoringEnableDisable(quint64 handle, QOpcUa::NodeAttribute attr, bool subscribe, QOpcUaMonitoringParameters status);
     void handleMonitoringStatusChanged(quint64 handle, QOpcUa::NodeAttribute attr, QOpcUaMonitoringParameters::Parameters items,
                                  QOpcUaMonitoringParameters param);
@@ -129,6 +130,7 @@ signals:
                               QOpcUa::UaStatusCode statusCode);
     void connectError(QOpcUaErrorState *errorState);
     void passwordForPrivateKeyRequired(const QString keyFilePath, QString *password, bool previousTryWasInvalid);
+    void dataChangesOccurred(QVector<QOpcUaReadResult> results);
 
 private:
     Q_DISABLE_COPY(QOpcUaClientImpl)

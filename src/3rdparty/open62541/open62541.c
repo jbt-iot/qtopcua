@@ -6962,6 +6962,7 @@ typedef struct UA_Client_Subscription {
     UA_UInt32 sequenceNumber;
     UA_DateTime lastActivity;
     LIST_HEAD(UA_ListOfClientMonitoredItems, UA_Client_MonitoredItem) monitoredItems;
+    UA_Client_DataChangeNotificationsCallback dataChangesCallback;
 } UA_Client_Subscription;
 
 void
@@ -41111,7 +41112,8 @@ UA_Client_Subscriptions_create(UA_Client *client,
                                const UA_CreateSubscriptionRequest request,
                                void *subscriptionContext,
                                UA_Client_StatusChangeNotificationCallback statusChangeCallback,
-                               UA_Client_DeleteSubscriptionCallback deleteCallback) {
+                               UA_Client_DeleteSubscriptionCallback deleteCallback,
+                               UA_Client_DataChangeNotificationsCallback dataChangesCallback) {
     UA_CreateSubscriptionResponse response;
     UA_CreateSubscriptionResponse_init(&response);
     
@@ -41142,6 +41144,7 @@ UA_Client_Subscriptions_create(UA_Client *client,
     newSub->publishingInterval = response.revisedPublishingInterval;
     newSub->maxKeepAliveCount = response.revisedMaxKeepAliveCount;
     LIST_INIT(&newSub->monitoredItems);
+    newSub->dataChangesCallback = dataChangesCallback;
     LIST_INSERT_HEAD(&client->subscriptions, newSub, listEntry);
 
     return response;
@@ -41614,6 +41617,22 @@ UA_Client_Subscriptions_nextSequenceNumber(UA_UInt32 sequenceNumber) {
 static void
 processDataChangeNotification(UA_Client *client, UA_Client_Subscription *sub,
                               UA_DataChangeNotification *dataChangeNotification) {
+    size_t monitoredItemsSize = dataChangeNotification->monitoredItemsSize;
+    UA_UInt32* monitoredItemIds = NULL;
+    UA_Variant* monitoredItemContexts = NULL;
+    UA_Variant* monitoredItemValues = NULL;
+    
+
+    if(monitoredItemsSize)
+    {
+        monitoredItemIds = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_UINT32]);
+
+        monitoredItemContexts = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+
+        monitoredItemValues = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+    }
+
+
     for(size_t j = 0; j < dataChangeNotification->monitoredItemsSize; ++j) {
         UA_MonitoredItemNotification *min = &dataChangeNotification->monitoredItems[j];
 
@@ -41638,9 +41657,23 @@ processDataChangeNotification(UA_Client *client, UA_Client_Subscription *sub,
             continue;
         }
 
+        monitoredItemIds[j] = mon->monitoredItemId;
+
+        UA_Variant_init(&monitoredItemValues[j]);
+        monitoredItemContexts[j].data = mon->context;
+
+        UA_Variant_init(&monitoredItemValues[j]);
+        monitoredItemValues[j].data = &min->value;
+
         mon->handler.dataChangeCallback(client, sub->subscriptionId, sub->context,
                                         mon->monitoredItemId, mon->context,
                                         &min->value);
+    }
+
+    if(monitoredItemsSize)
+    {
+        sub->dataChangesCallback(client, sub->subscriptionId, sub->context,
+                                 monitoredItemIds, monitoredItemContexts, monitoredItemValues, monitoredItemsSize);
     }
 }
 
