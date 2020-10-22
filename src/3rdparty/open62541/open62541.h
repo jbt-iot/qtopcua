@@ -27403,6 +27403,11 @@ typedef void (*UA_Client_StatusChangeNotificationCallback)
     (UA_Client *client, UA_UInt32 subId, void *subContext,
      UA_StatusChangeNotification *notification);
 
+typedef void (*UA_Client_DataChangeNotificationsCallback)
+    (UA_Client *client, UA_UInt32 subId, void *subContext,
+     UA_UInt32 *monIds, UA_Variant *monContexts,
+     UA_Variant *values, size_t size);
+
 /* Provides default values for a new subscription.
  *
  * RequestedPublishingInterval:  500.0 [ms]
@@ -27430,7 +27435,8 @@ UA_Client_Subscriptions_create(UA_Client *client,
                                const UA_CreateSubscriptionRequest request,
                                void *subscriptionContext,
                                UA_Client_StatusChangeNotificationCallback statusChangeCallback,
-                               UA_Client_DeleteSubscriptionCallback deleteCallback);
+                               UA_Client_DeleteSubscriptionCallback deleteCallback,
+                               UA_Client_DataChangeNotificationsCallback dataChangesCallback);
 
 UA_ModifySubscriptionResponse UA_EXPORT
 UA_Client_Subscriptions_modify(UA_Client *client, const UA_ModifySubscriptionRequest request);

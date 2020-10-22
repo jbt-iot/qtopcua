@@ -64,6 +64,7 @@ OpcUaMachineBackend::OpcUaMachineBackend(QObject *parent)
     , m_successfullyCreated(false)
 {
     qRegisterMetaType<OpcUaMachineBackend::MachineState>();
+    qRegisterMetaType<QVector<quint64>>("QVector<quint64>");
     qmlRegisterType<OpcUaMachineBackend>("OpcUaMachineBackend", 1, 0, "OpcUaMachineBackend");
 
     QOpcUaProvider provider;
