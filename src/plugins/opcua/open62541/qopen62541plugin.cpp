@@ -57,6 +57,7 @@ QOpen62541Plugin::QOpen62541Plugin(QObject *parent)
 {
     compileTimeEnforceEnumMappings();
     qRegisterMetaType<UA_NodeId>();
+    qRegisterMetaType<QVector<quint64>>("QVector<quint64>");
 }
 
 QOpen62541Plugin::~QOpen62541Plugin()

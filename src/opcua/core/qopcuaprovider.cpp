@@ -188,6 +188,7 @@ QOpcUaProvider::QOpcUaProvider(QObject *parent)
     qRegisterMetaType<QVector<QOpcUaApplicationDescription>>();
     qRegisterMetaType<QOpcUaApplicationIdentity>();
     qRegisterMetaType<QOpcUaPkiConfiguration>();
+    qRegisterMetaType<QVector<quint64>>();
 }
 
 QOpcUaProvider::~QOpcUaProvider()

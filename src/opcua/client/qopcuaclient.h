@@ -160,6 +160,7 @@ Q_SIGNALS:
     void deleteReferenceFinished(QString sourceNodeId, QString referenceTypeId, QOpcUaExpandedNodeId targetNodeId, bool isForwardReference,
                               QOpcUa::UaStatusCode statusCode);
     void passwordForPrivateKeyRequired(QString keyFilePath, QString *password, bool previousTryWasInvalid);
+    void dataChangesOccurred(QVector<QOpcUaReadResult> results);
 
 private:
     Q_DISABLE_COPY(QOpcUaClient)
