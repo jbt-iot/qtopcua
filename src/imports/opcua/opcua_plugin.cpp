@@ -149,6 +149,7 @@ void OpcUaPlugin::registerTypes(const char *uri)
     qRegisterMetaType<OpcUaReadResult>();
     qRegisterMetaType<OpcUaWriteItem>();
     qRegisterMetaType<OpcUaWriteResult>();
+    qRegisterMetaType<QVector<quint64>>("QVector<quint64>");
     qmlRegisterType<OpcUaEndpointDiscovery>(uri, major, minor, "EndpointDiscovery");
     qmlRegisterType<OpcUaServerDiscovery>(uri, major, minor, "ServerDiscovery");
     qmlRegisterUncreatableType<QOpcUaUserTokenPolicy>(uri, major, minor, "UserTokenPolicy", "This type can not be created.");
