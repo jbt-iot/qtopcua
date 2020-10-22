@@ -63,6 +63,32 @@ static void monitoredValueHandler(UA_Client *client, UA_UInt32 subId, void *subC
     subscription->monitoredValueUpdated(monId, value);
 }
 
+static void monitoredValuesHandler(UA_Client *client, UA_UInt32 subId, void *subContext, UA_UInt32 *monId, UA_Variant *monContext, UA_Variant *value, size_t size)
+{
+    Q_UNUSED(client)
+    Q_UNUSED(subId)
+    Q_UNUSED(monContext)
+
+    QVector<UA_UInt32> monIds;
+    monIds.reserve(size);
+    std::copy(monId, monId + size, std::back_inserter(monIds));
+
+    QVector<UA_DataValue*> values;
+    values.reserve(size);
+    for(UA_Variant *init = value; init != value + size; ++init)
+    {
+        UA_DataValue *dataValue = static_cast<UA_DataValue *>(init->data);
+        values.push_back(dataValue);
+    }
+
+    UA_Array_delete(monId, size, &UA_TYPES[UA_TYPES_UINT32]);
+    UA_Array_delete(monContext, size, &UA_TYPES[UA_TYPES_VARIANT]);
+    UA_Array_delete(value, size, &UA_TYPES[UA_TYPES_VARIANT]);
+
+    QOpen62541Subscription *subscription = static_cast<QOpen62541Subscription *>(subContext);
+    subscription->monitoredValuesPostUpdated(monIds, values);
+}
+
 static void stateChangeHandler(UA_Client *client, UA_UInt32 subId, void *subContext, UA_StatusChangeNotification *notification)
 {
     Q_UNUSED(client);
@@ -117,7 +143,7 @@ UA_UInt32 QOpen62541Subscription::createOnServer()
     req.requestedMaxKeepAliveCount = m_maxKeepaliveCount;
     req.priority = m_priority;
     req.maxNotificationsPerPublish = m_maxNotificationsPerPublish;
-    UA_CreateSubscriptionResponse res = UA_Client_Subscriptions_create(m_backend->m_uaclient, req, this, stateChangeHandler, nullptr);
+    UA_CreateSubscriptionResponse res = UA_Client_Subscriptions_create(m_backend->m_uaclient, req, this, stateChangeHandler, nullptr, monitoredValuesHandler);
 
     if (res.responseHeader.serviceResult != UA_STATUSCODE_GOOD) {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not create subscription with interval" << m_interval << UA_StatusCode_name(res.responseHeader.serviceResult);
@@ -371,6 +397,53 @@ void QOpen62541Subscription::monitoredValueUpdated(UA_UInt32 monId, UA_DataValue
         res.setSourceTimestamp(QOpen62541ValueConverter::scalarToQt<QDateTime, UA_DateTime>(&value->sourceTimestamp));
     res.setStatusCode(QOpcUa::UaStatusCode::Good);
     emit m_backend->dataChangeOccurred(item.value()->handle, res);
+}
+
+void QOpen62541Subscription::monitoredValuesPostUpdated(QVector<UA_UInt32> monIds, QVector<UA_DataValue*> values)
+{
+    QVector<quint64> handles;
+    handles.reserve(monIds.size());
+
+    QVector<QOpcUaReadResult> results;
+    results.reserve(monIds.size());
+
+    for(size_t index = 0; index < monIds.size(); ++index)
+    {
+        auto item = m_itemIdToItemMapping.constFind(monIds[index]);
+        if (item == m_itemIdToItemMapping.constEnd())
+        {
+            continue;
+        }
+
+        QOpcUaReadResult res;
+
+        if (!values[index] || values[index] == UA_EMPTY_ARRAY_SENTINEL)
+        {
+            res.setStatusCode(QOpcUa::UaStatusCode::Good);
+
+            handles.push_back(item.value()->handle);
+            results.push_back(res);
+            continue;
+        }
+
+        res.setValue(QOpen62541ValueConverter::toQVariant(values[index]->value));
+        res.setAttribute(item.value()->attr);
+        if (values[index]->hasServerTimestamp)
+        {
+            res.setServerTimestamp(QOpen62541ValueConverter::scalarToQt<QDateTime, UA_DateTime>(&values[index]->serverTimestamp));
+        }
+            
+        if (values[index]->hasSourceTimestamp)
+        {
+            res.setSourceTimestamp(QOpen62541ValueConverter::scalarToQt<QDateTime, UA_DateTime>(&values[index]->sourceTimestamp));
+        }
+        res.setStatusCode(QOpcUa::UaStatusCode::Good);
+
+        handles.push_back(item.value()->handle);
+        results.push_back(res);
+    }
+
+    emit m_backend->dataChangesOccurred(handles, results);
 }
 
 void QOpen62541Subscription::sendTimeoutNotification()

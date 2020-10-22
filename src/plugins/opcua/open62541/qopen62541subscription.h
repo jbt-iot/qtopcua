@@ -63,6 +63,8 @@ public:
     void monitoredValueUpdated(UA_UInt32 monId, UA_DataValue *value);
     void eventReceived(UA_UInt32 monId, QVariantList list);
 
+    void monitoredValuesPostUpdated(QVector<UA_UInt32> monIds, QVector<UA_DataValue*> values);
+
     void sendTimeoutNotification();
 
     struct MonitoredItem {
