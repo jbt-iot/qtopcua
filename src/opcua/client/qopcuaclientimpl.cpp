@@ -93,6 +93,7 @@ void QOpcUaClientImpl::connectBackendWithClient(QOpcUaBackend *backend)
     connect(backend, &QOpcUaBackend::deleteNodeFinished, this, &QOpcUaClientImpl::deleteNodeFinished);
     connect(backend, &QOpcUaBackend::addReferenceFinished, this, &QOpcUaClientImpl::addReferenceFinished);
     connect(backend, &QOpcUaBackend::deleteReferenceFinished, this, &QOpcUaClientImpl::deleteReferenceFinished);
+    connect(backend, &QOpcUaBackend::enableMonitoringFinished, this, &QOpcUaClientImpl::enableMonitoringFinished);
     // This needs to be blocking queued because it is called from another thread, which needs to wait for a result.
     connect(backend, &QOpcUaBackend::connectError, this, &QOpcUaClientImpl::connectError, Qt::BlockingQueuedConnection);
     connect(backend, &QOpcUaBackend::passwordForPrivateKeyRequired, this, &QOpcUaClientImpl::passwordForPrivateKeyRequired, Qt::BlockingQueuedConnection);
@@ -121,21 +122,21 @@ void QOpcUaClientImpl::handleDataChangeOccurred(quint64 handle, const QOpcUaRead
 
 void QOpcUaClientImpl::handleDataChangesOccurred(QVector<quint64> handles, QVector<QOpcUaReadResult> results)
 {
-    QVector<QOpcUaReadResult> temp_results;
-    results.reserve(results.size());
+    // QVector<QOpcUaReadResult> temp_results;
+    // results.reserve(results.size());
 
-    for(size_t index = 0; index < handles.size(); ++index)
-    {
-        auto it = m_handles.constFind(handles[index]);
-        if (it != m_handles.constEnd() && !it->isNull())
-        {
-            QOpcUaReadResult readRes(results[index]);
-            readRes.setNodeId((*it)->nodeId());
-            temp_results.push_back(readRes);
-        }
-    }
+    // for(size_t index = 0; index < handles.size(); ++index)
+    // {
+    //     auto it = m_handles.constFind(handles[index]);
+    //     if (it != m_handles.constEnd() && !it->isNull())
+    //     {
+    //         QOpcUaReadResult readRes(results[index]);
+    //         readRes.setNodeId((*it)->nodeId());
+    //         temp_results.push_back(readRes);
+    //     }
+    // }
 
-    emit dataChangesOccurred(temp_results);
+    emit dataChangesOccurred(results);
 }
 
 void QOpcUaClientImpl::handleMonitoringEnableDisable(quint64 handle, QOpcUa::NodeAttribute attr, bool subscribe, QOpcUaMonitoringParameters status)

@@ -935,4 +935,15 @@ QVector<QOpcUaUserTokenPolicy::TokenType> QOpcUaClient::supportedUserTokenTypes(
     return d->m_impl->supportedUserTokenTypes();
 }
 
+bool QOpcUaClient::enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor)
+{
+    if (state() != QOpcUaClient::Connected)
+    {
+        return false;
+    }
+
+    Q_D(QOpcUaClient);
+    return d->m_impl->enableMonitoring(nodesToMonitor);
+}
+
 QT_END_NAMESPACE

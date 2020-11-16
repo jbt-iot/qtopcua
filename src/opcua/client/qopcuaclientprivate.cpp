@@ -122,6 +122,11 @@ QOpcUaClientPrivate::QOpcUaClientPrivate(QOpcUaClientImpl *impl)
         Q_Q(QOpcUaClient);
         emit q->dataChangesOccurred(results);
     });
+
+    QObject::connect(m_impl.data(), &QOpcUaClientImpl::enableMonitoringFinished, [this](QVector<JBTOpcUaMonitoringResult> monitorResult, QOpcUa::UaStatusCode serviceResult) {
+        Q_Q(QOpcUaClient);
+        emit q->enableMonitoringFinished(monitorResult, serviceResult);
+    });
 }
 
 QOpcUaClientPrivate::~QOpcUaClientPrivate()
