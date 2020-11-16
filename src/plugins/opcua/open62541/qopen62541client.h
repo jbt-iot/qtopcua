@@ -77,6 +77,8 @@ public:
     QStringList supportedSecurityPolicies() const override;
     QVector<QOpcUaUserTokenPolicy::TokenType> supportedUserTokenTypes() const override;
 
+    bool enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor) override;
+
 private slots:
 
 private:

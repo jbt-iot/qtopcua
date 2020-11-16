@@ -56,14 +56,7 @@ QT_BEGIN_NAMESPACE
 Q_DECLARE_LOGGING_CATEGORY(QT_OPCUA_PLUGINS_OPEN62541)
 
 Open62541AsyncBackend::Open62541AsyncBackend(QOpen62541Client *parent)
-    : QOpcUaBackend()
-    , m_uaclient(nullptr)
-    , m_clientImpl(parent)
-    , m_useStateCallback(false)
-    , m_minimumIterateInterval(50)
-    , m_maximumIterateInterval(5000)
-    , m_clientIterateTimer(this)
-    , m_minPublishingInterval(0)
+    : QOpcUaBackend(), m_uaclient(nullptr), m_clientImpl(parent), m_useStateCallback(false), m_minimumIterateInterval(50), m_maximumIterateInterval(5000), m_clientIterateTimer(this), m_minPublishingInterval(0)
 {
     QObject::connect(&m_clientIterateTimer, &QTimer::timeout,
                      this, &Open62541AsyncBackend::iterateClient);
@@ -199,12 +192,14 @@ void Open62541AsyncBackend::enableMonitoring(quint64 handle, UA_NodeId id, QOpcU
     QOpen62541Subscription *usedSubscription = nullptr;
 
     // Create a new subscription if necessary
-    if (settings.subscriptionId()) {
+    if (settings.subscriptionId())
+    {
         auto sub = m_subscriptions.find(settings.subscriptionId());
-        if (sub == m_subscriptions.end()) {
+        if (sub == m_subscriptions.end())
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "There is no subscription with id" << settings.subscriptionId();
 
-            qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute){
+            qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute) {
                 QOpcUaMonitoringParameters s;
                 s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
                 emit monitoringEnableDisable(handle, attribute, true, s);
@@ -212,13 +207,16 @@ void Open62541AsyncBackend::enableMonitoring(quint64 handle, UA_NodeId id, QOpcU
             return;
         }
         usedSubscription = sub.value(); // Ignore interval != subscription.interval
-    } else {
+    }
+    else
+    {
         usedSubscription = getSubscription(settings);
     }
 
-    if (!usedSubscription) {
+    if (!usedSubscription)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not create subscription with interval" << settings.publishingInterval();
-        qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute){
+        qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute) {
             QOpcUaMonitoringParameters s;
             s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
             emit monitoringEnableDisable(handle, attribute, true, s);
@@ -226,13 +224,16 @@ void Open62541AsyncBackend::enableMonitoring(quint64 handle, UA_NodeId id, QOpcU
         return;
     }
 
-    qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute){
-        if (getSubscriptionForItem(handle, attribute)) {
+    qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute) {
+        if (getSubscriptionForItem(handle, attribute))
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Monitored item for" << attribute << "has already been created";
             QOpcUaMonitoringParameters s;
             s.setStatusCode(QOpcUa::UaStatusCode::BadEntryExists);
             emit monitoringEnableDisable(handle, attribute, true, s);
-        } else {
+        }
+        else
+        {
             bool success = usedSubscription->addAttributeMonitoredItem(handle, attribute, id, settings);
             if (success)
                 m_attributeMapping[handle][attribute] = usedSubscription;
@@ -247,9 +248,10 @@ void Open62541AsyncBackend::enableMonitoring(quint64 handle, UA_NodeId id, QOpcU
 
 void Open62541AsyncBackend::disableMonitoring(quint64 handle, QOpcUa::NodeAttributes attr)
 {
-    qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute){
+    qt_forEachAttribute(attr, [&](QOpcUa::NodeAttribute attribute) {
         QOpen62541Subscription *sub = getSubscriptionForItem(handle, attribute);
-        if (sub) {
+        if (sub)
+        {
             sub->removeAttributeMonitoredItem(handle, attribute);
             m_attributeMapping[handle].remove(attribute);
             if (sub->monitoredItemsCount() == 0)
@@ -262,7 +264,8 @@ void Open62541AsyncBackend::disableMonitoring(quint64 handle, QOpcUa::NodeAttrib
 void Open62541AsyncBackend::modifyMonitoring(quint64 handle, QOpcUa::NodeAttribute attr, QOpcUaMonitoringParameters::Parameter item, QVariant value)
 {
     QOpen62541Subscription *subscription = getSubscriptionForItem(handle, attr);
-    if (!subscription) {
+    if (!subscription)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not modify" << item << ", the monitored item does not exist";
         QOpcUaMonitoringParameters p;
         p.setStatusCode(QOpcUa::UaStatusCode::BadMonitoredItemIdInvalid);
@@ -276,10 +279,12 @@ void Open62541AsyncBackend::modifyMonitoring(quint64 handle, QOpcUa::NodeAttribu
 
 QOpen62541Subscription *Open62541AsyncBackend::getSubscription(const QOpcUaMonitoringParameters &settings)
 {
-    if (settings.subscriptionType() == QOpcUaMonitoringParameters::SubscriptionType::Shared) {
+    if (settings.subscriptionType() == QOpcUaMonitoringParameters::SubscriptionType::Shared)
+    {
         // Requesting multiple subscriptions with publishing interval < minimum publishing interval breaks subscription sharing
         double interval = revisePublishingInterval(settings.publishingInterval(), m_minPublishingInterval);
-        for (auto entry : qAsConst(m_subscriptions)) {
+        for (auto entry : qAsConst(m_subscriptions))
+        {
             if (qFuzzyCompare(entry->interval(), interval) && entry->shared() == QOpcUaMonitoringParameters::SubscriptionType::Shared)
                 return entry;
         }
@@ -287,7 +292,8 @@ QOpen62541Subscription *Open62541AsyncBackend::getSubscription(const QOpcUaMonit
 
     QOpen62541Subscription *sub = new QOpen62541Subscription(this, settings);
     UA_UInt32 id = sub->createOnServer();
-    if (!id) {
+    if (!id)
+    {
         delete sub;
         return nullptr;
     }
@@ -302,7 +308,8 @@ QOpen62541Subscription *Open62541AsyncBackend::getSubscription(const QOpcUaMonit
 bool Open62541AsyncBackend::removeSubscription(UA_UInt32 subscriptionId)
 {
     auto sub = m_subscriptions.find(subscriptionId);
-    if (sub != m_subscriptions.end()) {
+    if (sub != m_subscriptions.end())
+    {
         sub.value()->removeOnServer();
         delete sub.value();
         m_subscriptions.remove(subscriptionId);
@@ -319,7 +326,8 @@ void Open62541AsyncBackend::callMethod(quint64 handle, UA_NodeId objectId, UA_No
 
     UA_Variant *inputArgs = nullptr;
 
-    if (args.size()) {
+    if (args.size())
+    {
         inputArgs = static_cast<UA_Variant *>(UA_Array_new(args.size(), &UA_TYPES[UA_TYPES_VARIANT]));
         for (int i = 0; i < args.size(); ++i)
             inputArgs[i] = QOpen62541ValueConverter::toOpen62541Variant(args[i].first, args[i].second);
@@ -336,13 +344,16 @@ void Open62541AsyncBackend::callMethod(quint64 handle, UA_NodeId objectId, UA_No
 
     QVariant result;
 
-    if (outputSize > 1 && res == UA_STATUSCODE_GOOD) {
+    if (outputSize > 1 && res == UA_STATUSCODE_GOOD)
+    {
         QVariantList temp;
         for (size_t i = 0; i < outputSize; ++i)
             temp.append(QOpen62541ValueConverter::toQVariant(outputArguments[i]));
 
         result = temp;
-    } else if (outputSize == 1 && res == UA_STATUSCODE_GOOD) {
+    }
+    else if (outputSize == 1 && res == UA_STATUSCODE_GOOD)
+    {
         result = QOpen62541ValueConverter::toQVariant(outputArguments[0]);
     }
 
@@ -565,6 +576,126 @@ void Open62541AsyncBackend::writeNodeAttributes(const QVector<QOpcUaWriteItem> &
     }
 }
 
+void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor, const QVector<quint64> &handlers)
+{
+    QVector<JBTOpcUaMonitoringResult> results;
+
+    if (nodesToMonitor.size() == 0)
+    {
+        emit enableMonitoringFinished(results, QOpcUa::UaStatusCode::BadNothingToDo);
+        return;
+    }
+
+    results.reserve(nodesToMonitor.size());
+
+    QVector<std::tuple<quint64, QOpcUa::NodeAttribute, UA_NodeId, QOpen62541Subscription*, QOpcUaMonitoringParameters, JBTOpcUaMonitoringResult*>> input_data;
+
+    for (int index = 0; index < nodesToMonitor.size(); ++index)
+    {
+        const JBTOpcUaMonitoringItem& nodeToMonitor = nodesToMonitor.at(index);
+        const quint64& handle = handlers.at(index);
+        QOpcUaMonitoringParameters settings = nodeToMonitor.settings();
+        QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> monitorResults;
+
+        UA_NodeId id = Open62541Utils::nodeIdFromQString(nodeToMonitor.nodeId());
+        //UaDeleter<UA_NodeId> nodeIdDeleter(&id, UA_NodeId_deleteMembers);
+
+        QOpen62541Subscription *usedSubscription = nullptr;
+
+        // Create a new subscription if necessary
+        if (settings.subscriptionId())
+        {
+            auto sub = m_subscriptions.find(settings.subscriptionId());
+            if (sub == m_subscriptions.end())
+            {
+                qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "There is no subscription with id" << settings.subscriptionId();
+
+                qt_forEachAttribute(nodeToMonitor.attributes(), [&](QOpcUa::NodeAttribute attribute) {
+                    QOpcUaMonitoringParameters s;
+                    s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+                    emit monitoringEnableDisable(handle, attribute, true, s);
+                    monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+                });
+
+                results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+                UA_NodeId_deleteMembers(&id);
+                continue;
+            }
+            usedSubscription = sub.value(); // Ignore interval != subscription.interval
+        }
+        else
+        {
+            usedSubscription = getSubscription(settings);
+        }
+
+        if (!usedSubscription)
+        {
+            qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not create subscription with interval" << settings.publishingInterval();
+            qt_forEachAttribute(nodeToMonitor.attributes(), [&](QOpcUa::NodeAttribute attribute) {
+                QOpcUaMonitoringParameters s;
+                s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+                emit monitoringEnableDisable(handle, attribute, true, s);
+                monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+            });
+
+            results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+            UA_NodeId_deleteMembers(&id);
+            continue;
+        }
+
+        qt_forEachAttribute(nodeToMonitor.attributes(), [&](QOpcUa::NodeAttribute attribute) {
+            if (getSubscriptionForItem(handle, attribute))
+            {
+                qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Monitored item for" << attribute << "has already been created";
+                QOpcUaMonitoringParameters s;
+                s.setStatusCode(QOpcUa::UaStatusCode::BadEntryExists);
+                emit monitoringEnableDisable(handle, attribute, true, s);
+                monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadEntryExists);
+            }
+            else
+            {
+                monitorResults.insert(attribute, QOpcUa::UaStatusCode::GoodResultsMayBeIncomplete);
+                input_data.push_back(std::make_tuple(handle, attribute, id, usedSubscription, settings, nullptr));
+            }
+        });
+        results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+
+        JBTOpcUaMonitoringResult& mr = results.last();
+        int keys_size = mr.monitorResults().keys().size();
+        for(auto it = input_data.rbegin(); it != input_data.rend(), keys_size != 0; ++it, --keys_size)
+        {
+            std::get<5>(*it) = &mr;
+        }
+    }
+
+    if(input_data.size() != 0)
+    {
+        std::get<3>(input_data.at(0))->addAttributesMonitoredItems(input_data);
+
+        for(std::tuple<quint64, QOpcUa::NodeAttribute, UA_NodeId, QOpen62541Subscription*, QOpcUaMonitoringParameters, JBTOpcUaMonitoringResult*>& input: input_data)
+        {
+            if(std::get<5>(input)->monitorResults()[std::get<1>(input)] == QOpcUa::UaStatusCode::Good)
+            {
+                m_attributeMapping[std::get<0>(input)][std::get<1>(input)] = std::get<3>(input);
+            }
+        }
+    }
+
+    for(auto& input: input_data)
+    {
+        QOpen62541Subscription *usedSubscription = std::get<3>(input);
+        if (usedSubscription->monitoredItemsCount() == 0)
+        {
+            removeSubscription(usedSubscription->subscriptionId()); // No items were added
+        }
+        UA_NodeId_deleteMembers(&std::get<2>(input));
+    }
+
+    reevaluateClientIterateTimer();
+
+    emit enableMonitoringFinished(results, QOpcUa::UaStatusCode::Good);
+}
+
 void Open62541AsyncBackend::addNode(const QOpcUaAddNodeItem &nodeToAdd)
 {
     UA_AddNodesRequest req;
@@ -599,14 +730,18 @@ void Open62541AsyncBackend::addNode(const QOpcUaAddNodeItem &nodeToAdd)
 
     QOpcUa::UaStatusCode status = QOpcUa::UaStatusCode::Good;
     QString resultId;
-    if (res.responseHeader.serviceResult == UA_STATUSCODE_GOOD) {
+    if (res.responseHeader.serviceResult == UA_STATUSCODE_GOOD)
+    {
         if (res.results[0].statusCode == UA_STATUSCODE_GOOD)
             resultId = Open62541Utils::nodeIdToQString(res.results[0].addedNodeId);
-        else {
+        else
+        {
             status = static_cast<QOpcUa::UaStatusCode>(res.results[0].statusCode);
             qCDebug(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to add node:" << status;
         }
-    } else {
+    }
+    else
+    {
         status = static_cast<QOpcUa::UaStatusCode>(res.responseHeader.serviceResult);
         qCDebug(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to add node:" << status;
     }
@@ -623,7 +758,8 @@ void Open62541AsyncBackend::deleteNode(const QString &nodeId, bool deleteTargetR
 
     QOpcUa::UaStatusCode resultStatus = static_cast<QOpcUa::UaStatusCode>(res);
 
-    if (resultStatus != QOpcUa::UaStatusCode::Good) {
+    if (resultStatus != QOpcUa::UaStatusCode::Good)
+    {
         qCDebug(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to delete node" << nodeId << "with status code" << resultStatus;
     }
 
@@ -637,12 +773,12 @@ void Open62541AsyncBackend::addReference(const QOpcUaAddReferenceItem &reference
     UaDeleter<UA_ExpandedNodeId> nodeIdDeleter(&target, UA_ExpandedNodeId_deleteMembers);
 
     QOpen62541ValueConverter::scalarFromQt<UA_ExpandedNodeId, QOpcUaExpandedNodeId>(
-                referenceToAdd.targetNodeId(), &target);
+        referenceToAdd.targetNodeId(), &target);
 
     UA_String serverUri;
     UaDeleter<UA_String> serverUriDeleter(&serverUri, UA_String_deleteMembers);
     QOpen62541ValueConverter::scalarFromQt<UA_String, QString>(
-                referenceToAdd.targetServerUri(), &serverUri);
+        referenceToAdd.targetServerUri(), &serverUri);
 
     UA_NodeClass nodeClass = static_cast<UA_NodeClass>(referenceToAdd.targetNodeClass());
 
@@ -667,7 +803,7 @@ void Open62541AsyncBackend::deleteReference(const QOpcUaDeleteReferenceItem &ref
     UA_ExpandedNodeId_init(&target);
     UaDeleter<UA_ExpandedNodeId> targetDeleter(&target, UA_ExpandedNodeId_deleteMembers);
     QOpen62541ValueConverter::scalarFromQt<UA_ExpandedNodeId, QOpcUaExpandedNodeId>(
-                referenceToDelete.targetNodeId(), &target);
+        referenceToDelete.targetNodeId(), &target);
 
     UA_StatusCode res = UA_Client_deleteReference(m_uaclient,
                                                   Open62541Utils::nodeIdFromQString(referenceToDelete.sourceNodeId()),
@@ -690,7 +826,8 @@ static void convertBrowseResult(UA_BrowseResult *src, quint32 referencesSize, QV
     if (!src)
         return;
 
-    for (size_t i = 0; i < referencesSize; ++i) {
+    for (size_t i = 0; i < referencesSize; ++i)
+    {
         QOpcUaReferenceDescription temp;
         temp.setTargetNodeId(QOpen62541ValueConverter::scalarToQt<QOpcUaExpandedNodeId>(&src->references[i].nodeId));
         temp.setTypeDefinition(QOpen62541ValueConverter::scalarToQt<QOpcUaExpandedNodeId>(&src->references[i].typeDefinition));
@@ -727,17 +864,20 @@ void Open62541AsyncBackend::browse(quint64 handle, UA_NodeId id, const QOpcUaBro
 
     QOpcUa::UaStatusCode statusCode = QOpcUa::UaStatusCode::Good;
 
-    while (response->resultsSize && statusCode == QOpcUa::UaStatusCode::Good) {
+    while (response->resultsSize && statusCode == QOpcUa::UaStatusCode::Good)
+    {
         UA_BrowseResponse *res = static_cast<UA_BrowseResponse *>(response);
 
-        if (res->responseHeader.serviceResult != UA_STATUSCODE_GOOD || res->results->statusCode != UA_STATUSCODE_GOOD) {
+        if (res->responseHeader.serviceResult != UA_STATUSCODE_GOOD || res->results->statusCode != UA_STATUSCODE_GOOD)
+        {
             statusCode = static_cast<QOpcUa::UaStatusCode>(res->results->statusCode);
             break;
         }
 
         convertBrowseResult(res->results, res->results->referencesSize, ret);
 
-        if (res->results->continuationPoint.length) {
+        if (res->results->continuationPoint.length)
+        {
             UA_BrowseNextRequest nextReq;
             UA_BrowseNextRequest_init(&nextReq);
             UaDeleter<UA_BrowseNextRequest> nextReqDeleter(&nextReq, UA_BrowseNextRequest_deleteMembers);
@@ -746,7 +886,9 @@ void Open62541AsyncBackend::browse(quint64 handle, UA_NodeId id, const QOpcUaBro
             nextReq.continuationPointsSize = 1;
             UA_BrowseResponse_deleteMembers(res); // Deallocate the pointer members before overwriting the response
             *reinterpret_cast<UA_BrowseNextResponse *>(response) = UA_Client_Service_browseNext(m_uaclient, nextReq);
-        } else {
+        }
+        else
+        {
             break;
         }
     }
@@ -760,7 +902,8 @@ void Open62541AsyncBackend::clientStateCallback(UA_Client *client, UA_ClientStat
     if (!backend || !backend->m_useStateCallback)
         return;
 
-    if (state == UA_CLIENTSTATE_DISCONNECTED) {
+    if (state == UA_CLIENTSTATE_DISCONNECTED)
+    {
         emit backend->stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::ConnectionError);
         backend->m_useStateCallback = false;
         // Use a queued connection to make sure the subscription is not deleted if the callback was triggered
@@ -778,13 +921,15 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
         UA_Client_delete(m_uaclient);
 
     QString errorMessage;
-    if (!verifyEndpointDescription(endpoint, &errorMessage)) {
+    if (!verifyEndpointDescription(endpoint, &errorMessage))
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << errorMessage;
         emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::ClientError::InvalidUrl);
         return;
     }
 
-    if (!m_clientImpl->supportedSecurityPolicies().contains(endpoint.securityPolicy())) {
+    if (!m_clientImpl->supportedSecurityPolicies().contains(endpoint.securityPolicy()))
+    {
 #ifndef UA_ENABLE_ENCRYPTION
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "The open62541 plugin has been built without encryption support";
 #endif
@@ -807,7 +952,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 #endif
 
 #ifdef UA_ENABLE_ENCRYPTION
-    if (pkiConfig.isPkiValid()) {
+    if (pkiConfig.isPkiValid())
+    {
         UA_ByteString localCertificate;
         UA_ByteString privateKey;
         UA_ByteString *trustList = nullptr;
@@ -817,7 +963,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 
         bool success = loadFileToByteString(pkiConfig.clientCertificateFile(), &localCertificate);
 
-        if (!success) {
+        if (!success)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to load client certificate";
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::AccessDenied);
             return;
@@ -827,7 +974,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 
         success = loadFileToByteString(pkiConfig.privateKeyFile(), &privateKey);
 
-        if (!success) {
+        if (!success)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to load private key";
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::AccessDenied);
             return;
@@ -837,7 +985,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 
         success = loadAllFilesInDirectory(pkiConfig.trustListDirectory(), &trustList, &trustListSize);
 
-        if (!success) {
+        if (!success)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to load trust list";
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::AccessDenied);
             return;
@@ -847,7 +996,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 
         success = loadAllFilesInDirectory(pkiConfig.revocationListDirectory(), &revocationList, &revocationListSize);
 
-        if (!success) {
+        if (!success)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to load revocation list";
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::AccessDenied);
             return;
@@ -858,12 +1008,15 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
         UA_StatusCode result = UA_ClientConfig_setDefaultEncryption(conf, localCertificate, privateKey, trustList,
                                                                     trustListSize, revocationList, revocationListSize);
 
-        if (result != UA_STATUSCODE_GOOD) {
+        if (result != UA_STATUSCODE_GOOD)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to initialize PKI:" << static_cast<QOpcUa::UaStatusCode>(result);
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::AccessDenied);
             return;
         }
-    } else {
+    }
+    else
+    {
 #else
     {
 #endif
@@ -881,8 +1034,8 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
     conf->connectivityCheckInterval = 60000;
 
     conf->clientDescription.applicationName = UA_LOCALIZEDTEXT_ALLOC("", identity.applicationName().toUtf8().constData());
-    conf->clientDescription.applicationUri  = UA_STRING_ALLOC(identity.applicationUri().toUtf8().constData());
-    conf->clientDescription.productUri      = UA_STRING_ALLOC(identity.productUri().toUtf8().constData());
+    conf->clientDescription.applicationUri = UA_STRING_ALLOC(identity.applicationUri().toUtf8().constData());
+    conf->clientDescription.productUri = UA_STRING_ALLOC(identity.productUri().toUtf8().constData());
     conf->clientDescription.applicationType = UA_APPLICATIONTYPE_CLIENT;
 
     conf->securityPolicyUri = UA_STRING_ALLOC(endpoint.securityPolicy().toUtf8().constData());
@@ -890,20 +1043,26 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
 
     UA_StatusCode ret;
 
-    if (authInfo.authenticationType() == QOpcUaUserTokenPolicy::TokenType::Anonymous) {
+    if (authInfo.authenticationType() == QOpcUaUserTokenPolicy::TokenType::Anonymous)
+    {
         ret = UA_Client_connect(m_uaclient, endpoint.endpointUrl().toUtf8().constData());
-    } else if (authInfo.authenticationType() == QOpcUaUserTokenPolicy::TokenType::Username) {
+    }
+    else if (authInfo.authenticationType() == QOpcUaUserTokenPolicy::TokenType::Username)
+    {
 
         bool suitableTokenFound = false;
-        for (const auto token : endpoint.userIdentityTokens()) {
+        for (const auto token : endpoint.userIdentityTokens())
+        {
             if (token.tokenType() == QOpcUaUserTokenPolicy::Username &&
-                    m_clientImpl->supportedSecurityPolicies().contains(token.securityPolicy())) {
+                m_clientImpl->supportedSecurityPolicies().contains(token.securityPolicy()))
+            {
                 suitableTokenFound = true;
                 break;
             }
         }
 
-        if (!suitableTokenFound) {
+        if (!suitableTokenFound)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "No suitable user token policy found";
             emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::ClientError::NoError);
             return;
@@ -912,14 +1071,17 @@ void Open62541AsyncBackend::connectToEndpoint(const QOpcUaEndpointDescription &e
         const auto credentials = authInfo.authenticationData().value<QPair<QString, QString>>();
         ret = UA_Client_connect_username(m_uaclient, endpoint.endpointUrl().toUtf8().constData(),
                                          credentials.first.toUtf8().constData(), credentials.second.toUtf8().constData());
-    } else {
+    }
+    else
+    {
         emit stateAndOrErrorChanged(QOpcUaClient::Disconnected, QOpcUaClient::UnsupportedAuthenticationInformation);
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to connect: Selected authentication type"
-                                          << authInfo.authenticationType() << "is not supported.";
+                                              << authInfo.authenticationType() << "is not supported.";
         return;
     }
 
-    if (ret != UA_STATUSCODE_GOOD) {
+    if (ret != UA_STATUSCODE_GOOD)
+    {
         UA_Client_delete(m_uaclient);
         m_uaclient = nullptr;
         QOpcUaClient::ClientError error = ret == UA_STATUSCODE_BADUSERACCESSDENIED ? QOpcUaClient::AccessDenied : QOpcUaClient::UnknownError;
@@ -952,9 +1114,11 @@ void Open62541AsyncBackend::disconnectFromEndpoint()
 
     m_useStateCallback = false;
 
-    if (m_uaclient) {
+    if (m_uaclient)
+    {
         UA_StatusCode ret = UA_Client_disconnect(m_uaclient);
-        if (ret != UA_STATUSCODE_GOOD) {
+        if (ret != UA_STATUSCODE_GOOD)
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Open62541: Failed to disconnect";
             // Fall through intentionally
         }
@@ -977,8 +1141,10 @@ void Open62541AsyncBackend::requestEndpoints(const QUrl &url)
 
     namespace vc = QOpen62541ValueConverter;
     using namespace QOpcUa;
-    if (res == UA_STATUSCODE_GOOD && numEndpoints) {
-        for (size_t i = 0; i < numEndpoints ; ++i) {
+    if (res == UA_STATUSCODE_GOOD && numEndpoints)
+    {
+        for (size_t i = 0; i < numEndpoints; ++i)
+        {
             QOpcUaEndpointDescription epd;
             QOpcUaApplicationDescription &apd = epd.serverRef();
 
@@ -995,7 +1161,8 @@ void Open62541AsyncBackend::requestEndpoints(const QUrl &url)
             epd.setServerCertificate(vc::scalarToQt<QByteArray, UA_ByteString>(&endpoints[i].serverCertificate));
             epd.setSecurityMode(static_cast<QOpcUaEndpointDescription::MessageSecurityMode>(endpoints[i].securityMode));
             epd.setSecurityPolicy(vc::scalarToQt<QString, UA_String>(&endpoints[i].securityPolicyUri));
-            for (size_t j = 0; j < endpoints[i].userIdentityTokensSize; ++j) {
+            for (size_t j = 0; j < endpoints[i].userIdentityTokensSize; ++j)
+            {
                 QOpcUaUserTokenPolicy policy;
                 UA_UserTokenPolicy *policySrc = &endpoints[i].userIdentityTokens[j];
                 policy.setPolicyId(vc::scalarToQt<QString, UA_String>(&policySrc->policyId));
@@ -1010,7 +1177,9 @@ void Open62541AsyncBackend::requestEndpoints(const QUrl &url)
             epd.setSecurityLevel(endpoints[i].securityLevel);
             ret.append(epd);
         }
-    } else {
+    }
+    else
+    {
         if (res == UA_STATUSCODE_GOOD)
             qWarning() << "Server returned an empty endpoint list";
         else
@@ -1029,18 +1198,19 @@ void Open62541AsyncBackend::iterateClient()
         return;
 
     // If BADSERVERNOTCONNECTED is returned, the subscriptions are gone and local information can be deleted.
-    if (UA_Client_run_iterate(m_uaclient, 10) == UA_STATUSCODE_BADSERVERNOTCONNECTED) {
+    if (UA_Client_run_iterate(m_uaclient, 10) == UA_STATUSCODE_BADSERVERNOTCONNECTED)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Unable to send publish request";
         cleanupSubscriptions();
     }
-
 }
 
 void Open62541AsyncBackend::reevaluateClientIterateTimer()
 {
     if (m_subscriptions.count() == 0)
         m_clientIterateTimer.start(m_maximumIterateInterval);
-    else {// Derive an interval from the the lowest subscription and a lower limit.
+    else
+    { // Derive an interval from the the lowest subscription and a lower limit.
         double minimum = std::numeric_limits<double>::max();
         for (const auto subscription : m_subscriptions)
             minimum = subscription->interval() < minimum ? subscription->interval() : minimum;
@@ -1051,7 +1221,8 @@ void Open62541AsyncBackend::reevaluateClientIterateTimer()
 
 void Open62541AsyncBackend::handleSubscriptionTimeout(QOpen62541Subscription *sub, QVector<QPair<quint64, QOpcUa::NodeAttribute>> items)
 {
-    for (auto it : qAsConst(items)) {
+    for (auto it : qAsConst(items))
+    {
         auto item = m_attributeMapping.find(it.first);
         if (item == m_attributeMapping.end())
             continue;
@@ -1069,7 +1240,8 @@ QOpen62541Subscription *Open62541AsyncBackend::getSubscriptionForItem(quint64 ha
         return nullptr;
 
     auto subscription = nodeEntry->find(attr);
-    if (subscription == nodeEntry->end()) {
+    if (subscription == nodeEntry->end())
+    {
         return nullptr;
     }
 
@@ -1086,7 +1258,6 @@ QOpcUaApplicationDescription Open62541AsyncBackend::convertApplicationDescriptio
     temp.setApplicationType(static_cast<QOpcUaApplicationDescription::ApplicationType>(desc.applicationType));
     temp.setGatewayServerUri(QOpen62541ValueConverter::scalarToQt<QString, UA_String>(&desc.gatewayServerUri));
     temp.setDiscoveryProfileUri(QOpen62541ValueConverter::scalarToQt<QString, UA_String>(&desc.discoveryProfileUri));
-
 
     for (size_t i = 0; i < desc.discoveryUrlsSize; ++i)
         temp.discoveryUrlsRef().append(QOpen62541ValueConverter::scalarToQt<QString, UA_String>(&desc.discoveryUrls[i]));
@@ -1106,12 +1277,14 @@ void Open62541AsyncBackend::cleanupSubscriptions()
 
 bool Open62541AsyncBackend::loadFileToByteString(const QString &location, UA_ByteString *target) const
 {
-    if (location.isEmpty()) {
+    if (location.isEmpty())
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Unable to read from empty file path";
         return false;
     }
 
-    if (!target) {
+    if (!target)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "No target ByteString given";
         return false;
     }
@@ -1120,7 +1293,8 @@ bool Open62541AsyncBackend::loadFileToByteString(const QString &location, UA_Byt
 
     QFile file(location);
 
-    if (!file.open(QFile::ReadOnly)) {
+    if (!file.open(QFile::ReadOnly))
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to open file" << location << file.errorString();
         return false;
     }
@@ -1131,8 +1305,10 @@ bool Open62541AsyncBackend::loadFileToByteString(const QString &location, UA_Byt
     temp.length = data.length();
     if (data.isEmpty())
         temp.data = nullptr;
-    else {
-        if (data.startsWith('-')) { // PEM file
+    else
+    {
+        if (data.startsWith('-'))
+        { // PEM file
             // Remove trailing newline, mbedTLS doesn't tolerate this when loading a certificate
             data = QString::fromLatin1(data).trimmed().toLatin1();
         }
@@ -1144,12 +1320,14 @@ bool Open62541AsyncBackend::loadFileToByteString(const QString &location, UA_Byt
 
 bool Open62541AsyncBackend::loadAllFilesInDirectory(const QString &location, UA_ByteString **target, int *size) const
 {
-    if (location.isEmpty()) {
+    if (location.isEmpty())
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Unable to read from empty file path";
         return false;
     }
 
-    if (!target) {
+    if (!target)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "No target ByteString given";
         return false;
     }
@@ -1161,7 +1339,8 @@ bool Open62541AsyncBackend::loadAllFilesInDirectory(const QString &location, UA_
 
     auto entries = dir.entryList(QDir::Files);
 
-    if (entries.isEmpty()) {
+    if (entries.isEmpty())
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Directory is empty";
         return true;
     }
@@ -1169,13 +1348,16 @@ bool Open62541AsyncBackend::loadAllFilesInDirectory(const QString &location, UA_
     const int tempSize = entries.size();
     UA_ByteString *list = static_cast<UA_ByteString *>(UA_Array_new(tempSize, &UA_TYPES[UA_TYPES_BYTESTRING]));
 
-    if (!list) {
+    if (!list)
+    {
         qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to allocate memory for loading files in" << location;
         return false;
     }
 
-    for (int i = 0; i < entries.size(); ++i) {
-        if (!loadFileToByteString(dir.filePath(entries.at(i)), &list[i])) {
+    for (int i = 0; i < entries.size(); ++i)
+    {
+        if (!loadFileToByteString(dir.filePath(entries.at(i)), &list[i]))
+        {
             qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to open file" << entries.at(i);
             UA_Array_delete(list, tempSize, &UA_TYPES[UA_TYPES_BYTESTRING]);
             size = 0;
@@ -1197,161 +1379,193 @@ UA_ExtensionObject Open62541AsyncBackend::assembleNodeAttributes(const QOpcUaNod
     UA_ExtensionObject_init(&obj);
     obj.encoding = UA_EXTENSIONOBJECT_DECODED;
 
-    switch (nodeClass) {
-    case QOpcUa::NodeClass::Object: {
+    switch (nodeClass)
+    {
+    case QOpcUa::NodeClass::Object:
+    {
         UA_ObjectAttributes *attr = UA_ObjectAttributes_new();
         *attr = UA_ObjectAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_OBJECTATTRIBUTES];
 
-        if (nodeAttributes.hasEventNotifier()) {
+        if (nodeAttributes.hasEventNotifier())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_EVENTNOTIFIER;
             attr->eventNotifier = nodeAttributes.eventNotifier();
         }
         break;
     }
-    case QOpcUa::NodeClass::Variable: {
+    case QOpcUa::NodeClass::Variable:
+    {
         UA_VariableAttributes *attr = UA_VariableAttributes_new();
         *attr = UA_VariableAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_VARIABLEATTRIBUTES];
 
-        if (nodeAttributes.hasValue()) {
+        if (nodeAttributes.hasValue())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_VALUE;
             attr->value = QOpen62541ValueConverter::toOpen62541Variant(nodeAttributes.value(),
                                                                        nodeAttributes.valueType());
         }
-        if (nodeAttributes.hasDataTypeId()) {
+        if (nodeAttributes.hasDataTypeId())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_DATATYPE;
             attr->dataType = Open62541Utils::nodeIdFromQString(nodeAttributes.dataTypeId());
         }
-        if (nodeAttributes.hasValueRank()) {
+        if (nodeAttributes.hasValueRank())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_VALUERANK;
             attr->valueRank = nodeAttributes.valueRank();
         }
-        if (nodeAttributes.hasArrayDimensions()) {
+        if (nodeAttributes.hasArrayDimensions())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ARRAYDIMENSIONS;
             attr->arrayDimensions = copyArrayDimensions(nodeAttributes.arrayDimensions(), &attr->arrayDimensionsSize);
         }
-        if (nodeAttributes.hasAccessLevel()) {
+        if (nodeAttributes.hasAccessLevel())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ACCESSLEVEL;
             attr->accessLevel = nodeAttributes.accessLevel();
         }
-        if (nodeAttributes.hasUserAccessLevel()) {
+        if (nodeAttributes.hasUserAccessLevel())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_USERACCESSLEVEL;
             attr->userAccessLevel = nodeAttributes.userAccessLevel();
         }
-        if (nodeAttributes.hasMinimumSamplingInterval()) {
+        if (nodeAttributes.hasMinimumSamplingInterval())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_MINIMUMSAMPLINGINTERVAL;
             attr->minimumSamplingInterval = nodeAttributes.minimumSamplingInterval();
         }
-        if (nodeAttributes.hasHistorizing()) {
+        if (nodeAttributes.hasHistorizing())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_HISTORIZING;
             attr->historizing = nodeAttributes.historizing();
         }
         break;
     }
-    case QOpcUa::NodeClass::Method: {
+    case QOpcUa::NodeClass::Method:
+    {
         UA_MethodAttributes *attr = UA_MethodAttributes_new();
         *attr = UA_MethodAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_METHODATTRIBUTES];
 
-        if (nodeAttributes.hasExecutable()) {
+        if (nodeAttributes.hasExecutable())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_EXECUTABLE;
             attr->executable = nodeAttributes.executable();
         }
-        if (nodeAttributes.hasUserExecutable()) {
+        if (nodeAttributes.hasUserExecutable())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_USEREXECUTABLE;
             attr->userExecutable = nodeAttributes.userExecutable();
         }
         break;
     }
-    case QOpcUa::NodeClass::ObjectType: {
+    case QOpcUa::NodeClass::ObjectType:
+    {
         UA_ObjectTypeAttributes *attr = UA_ObjectTypeAttributes_new();
         *attr = UA_ObjectTypeAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_OBJECTTYPEATTRIBUTES];
 
-        if (nodeAttributes.hasIsAbstract()) {
+        if (nodeAttributes.hasIsAbstract())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ISABSTRACT;
             attr->isAbstract = nodeAttributes.isAbstract();
         }
         break;
     }
-    case QOpcUa::NodeClass::VariableType: {
+    case QOpcUa::NodeClass::VariableType:
+    {
         UA_VariableTypeAttributes *attr = UA_VariableTypeAttributes_new();
         *attr = UA_VariableTypeAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_VARIABLETYPEATTRIBUTES];
 
-        if (nodeAttributes.hasValue()) {
+        if (nodeAttributes.hasValue())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_VALUE;
             attr->value = QOpen62541ValueConverter::toOpen62541Variant(nodeAttributes.value(),
                                                                        nodeAttributes.valueType());
         }
-        if (nodeAttributes.hasDataTypeId()) {
+        if (nodeAttributes.hasDataTypeId())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_DATATYPE;
             attr->dataType = Open62541Utils::nodeIdFromQString(nodeAttributes.dataTypeId());
         }
-        if (nodeAttributes.hasValueRank()) {
+        if (nodeAttributes.hasValueRank())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_VALUERANK;
             attr->valueRank = nodeAttributes.valueRank();
         }
-        if (nodeAttributes.hasArrayDimensions()) {
+        if (nodeAttributes.hasArrayDimensions())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ARRAYDIMENSIONS;
             attr->arrayDimensions = copyArrayDimensions(nodeAttributes.arrayDimensions(), &attr->arrayDimensionsSize);
         }
-        if (nodeAttributes.hasIsAbstract()) {
+        if (nodeAttributes.hasIsAbstract())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ISABSTRACT;
             attr->isAbstract = nodeAttributes.isAbstract();
         }
         break;
     }
-    case QOpcUa::NodeClass::ReferenceType: {
+    case QOpcUa::NodeClass::ReferenceType:
+    {
         UA_ReferenceTypeAttributes *attr = UA_ReferenceTypeAttributes_new();
         *attr = UA_ReferenceTypeAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_REFERENCETYPEATTRIBUTES];
 
-        if (nodeAttributes.hasIsAbstract()) {
+        if (nodeAttributes.hasIsAbstract())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ISABSTRACT;
             attr->isAbstract = nodeAttributes.isAbstract();
         }
-        if (nodeAttributes.hasSymmetric()) {
+        if (nodeAttributes.hasSymmetric())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_SYMMETRIC;
             attr->symmetric = nodeAttributes.symmetric();
         }
-        if (nodeAttributes.hasInverseName()) {
+        if (nodeAttributes.hasInverseName())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_INVERSENAME;
             QOpen62541ValueConverter::scalarFromQt<UA_LocalizedText, QOpcUaLocalizedText>(
-                        nodeAttributes.inverseName(), &attr->inverseName);
+                nodeAttributes.inverseName(), &attr->inverseName);
         }
         break;
     }
-    case QOpcUa::NodeClass::DataType: {
+    case QOpcUa::NodeClass::DataType:
+    {
         UA_DataTypeAttributes *attr = UA_DataTypeAttributes_new();
         *attr = UA_DataTypeAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_DATATYPEATTRIBUTES];
 
-        if (nodeAttributes.hasIsAbstract()) {
+        if (nodeAttributes.hasIsAbstract())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_ISABSTRACT;
             attr->isAbstract = nodeAttributes.isAbstract();
         }
         break;
     }
-    case QOpcUa::NodeClass::View: {
+    case QOpcUa::NodeClass::View:
+    {
         UA_ViewAttributes *attr = UA_ViewAttributes_new();
         *attr = UA_ViewAttributes_default;
         obj.content.decoded.data = attr;
         obj.content.decoded.type = &UA_TYPES[UA_TYPES_VIEWATTRIBUTES];
 
-        if (nodeAttributes.hasContainsNoLoops()) {
+        if (nodeAttributes.hasContainsNoLoops())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_CONTAINSNOLOOPS;
             attr->containsNoLoops = nodeAttributes.containsNoLoops();
         }
-        if (nodeAttributes.hasEventNotifier()) {
+        if (nodeAttributes.hasEventNotifier())
+        {
             attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_EVENTNOTIFIER;
             attr->eventNotifier = nodeAttributes.eventNotifier();
         }
@@ -1364,21 +1578,25 @@ UA_ExtensionObject Open62541AsyncBackend::assembleNodeAttributes(const QOpcUaNod
     }
 
     UA_ObjectAttributes *attr = reinterpret_cast<UA_ObjectAttributes *>(obj.content.decoded.data);
-    if (nodeAttributes.hasDisplayName()) {
+    if (nodeAttributes.hasDisplayName())
+    {
         attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_DISPLAYNAME;
         QOpen62541ValueConverter::scalarFromQt<UA_LocalizedText, QOpcUaLocalizedText>(
-                    nodeAttributes.displayName(), &attr->displayName);
+            nodeAttributes.displayName(), &attr->displayName);
     }
-    if (nodeAttributes.hasDescription()) {
+    if (nodeAttributes.hasDescription())
+    {
         attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_DESCRIPTION;
         QOpen62541ValueConverter::scalarFromQt<UA_LocalizedText, QOpcUaLocalizedText>(
-                    nodeAttributes.description(), &attr->description);
+            nodeAttributes.description(), &attr->description);
     }
-    if (nodeAttributes.hasWriteMask()) {
+    if (nodeAttributes.hasWriteMask())
+    {
         attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_WRITEMASK;
         attr->writeMask = nodeAttributes.writeMask();
     }
-    if (nodeAttributes.hasUserWriteMask()) {
+    if (nodeAttributes.hasUserWriteMask())
+    {
         attr->specifiedAttributes |= UA_NODEATTRIBUTESMASK_USERWRITEMASK;
         attr->userWriteMask = nodeAttributes.userWriteMask();
     }

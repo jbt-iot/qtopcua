@@ -95,6 +95,8 @@ public:
     virtual QStringList supportedSecurityPolicies() const = 0;
     virtual QVector<QOpcUaUserTokenPolicy::TokenType> supportedUserTokenTypes() const = 0;
 
+    virtual bool enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor) = 0;
+
     QOpcUaClient *m_client;
 
 private Q_SLOTS:
@@ -131,6 +133,7 @@ signals:
     void connectError(QOpcUaErrorState *errorState);
     void passwordForPrivateKeyRequired(const QString keyFilePath, QString *password, bool previousTryWasInvalid);
     void dataChangesOccurred(QVector<QOpcUaReadResult> results);
+    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitorResults, QOpcUa::UaStatusCode serviceResult);
 
 private:
     Q_DISABLE_COPY(QOpcUaClientImpl)

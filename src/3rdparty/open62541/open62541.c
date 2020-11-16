@@ -41617,21 +41617,20 @@ UA_Client_Subscriptions_nextSequenceNumber(UA_UInt32 sequenceNumber) {
 static void
 processDataChangeNotification(UA_Client *client, UA_Client_Subscription *sub,
                               UA_DataChangeNotification *dataChangeNotification) {
-    size_t monitoredItemsSize = dataChangeNotification->monitoredItemsSize;
+    size_t monitoredItemsSize = 0;
     UA_UInt32* monitoredItemIds = NULL;
     UA_Variant* monitoredItemContexts = NULL;
     UA_Variant* monitoredItemValues = NULL;
     
 
-    if(monitoredItemsSize)
+    if(dataChangeNotification->monitoredItemsSize)
     {
-        monitoredItemIds = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_UINT32]);
+        monitoredItemIds = UA_Array_new(dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_UINT32]);
 
-        monitoredItemContexts = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+        monitoredItemContexts = UA_Array_new(dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
 
-        monitoredItemValues = UA_Array_new(monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+        monitoredItemValues = UA_Array_new(dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
     }
-
 
     for(size_t j = 0; j < dataChangeNotification->monitoredItemsSize; ++j) {
         UA_MonitoredItemNotification *min = &dataChangeNotification->monitoredItems[j];
@@ -41657,17 +41656,43 @@ processDataChangeNotification(UA_Client *client, UA_Client_Subscription *sub,
             continue;
         }
 
-        monitoredItemIds[j] = mon->monitoredItemId;
+        monitoredItemIds[monitoredItemsSize] = mon->monitoredItemId;
 
-        UA_Variant_init(&monitoredItemValues[j]);
-        monitoredItemContexts[j].data = mon->context;
+        UA_Variant_init(&monitoredItemValues[monitoredItemsSize]);
+        monitoredItemContexts[monitoredItemsSize].data = mon->context;
 
-        UA_Variant_init(&monitoredItemValues[j]);
-        monitoredItemValues[j].data = &min->value;
+        UA_Variant_init(&monitoredItemValues[monitoredItemsSize]);
+        monitoredItemValues[monitoredItemsSize].data = &min->value;
 
         mon->handler.dataChangeCallback(client, sub->subscriptionId, sub->context,
                                         mon->monitoredItemId, mon->context,
                                         &min->value);
+
+        ++monitoredItemsSize;
+    }
+
+    if(dataChangeNotification->monitoredItemsSize && (monitoredItemsSize != dataChangeNotification->monitoredItemsSize))
+    {
+        UA_UInt32* tempMonitoredItemIds = NULL;
+        UA_Variant* tempMonitoredItemContexts = NULL;
+        UA_Variant* tempMonitoredItemValues = NULL;
+
+        UA_Array_copy(monitoredItemIds, monitoredItemsSize,
+                      (void **)(&tempMonitoredItemIds), &UA_TYPES[UA_TYPES_UINT32]);
+        
+        UA_Array_copy(monitoredItemContexts, monitoredItemsSize,
+                      (void **)(&tempMonitoredItemContexts), &UA_TYPES[UA_TYPES_VARIANT]);
+
+        UA_Array_copy(monitoredItemValues, monitoredItemsSize,
+                      (void **)(&tempMonitoredItemValues), &UA_TYPES[UA_TYPES_VARIANT]);
+
+        UA_Array_delete(monitoredItemIds, dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_UINT32]);
+        UA_Array_delete(monitoredItemContexts, dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+        UA_Array_delete(monitoredItemValues, dataChangeNotification->monitoredItemsSize, &UA_TYPES[UA_TYPES_VARIANT]);
+
+        monitoredItemIds = tempMonitoredItemIds;
+        monitoredItemContexts = tempMonitoredItemContexts;
+        monitoredItemValues = tempMonitoredItemValues;
     }
 
     if(monitoredItemsSize)

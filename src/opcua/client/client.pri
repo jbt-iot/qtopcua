@@ -57,6 +57,8 @@ SOURCES += \
     client/qopcuawriteitem.cpp \
     client/qopcuawriteresult.cpp \
     client/qopcuaxvalue.cpp \
+    client/jbtopcuamonitoringitem.cpp \
+    client/jbtopcuamonitoringresult.cpp \
 
 HEADERS += \
     client/qopcuaaddnodeitem.h \
@@ -108,6 +110,8 @@ HEADERS += \
     client/qopcuawriteitem.h \
     client/qopcuawriteresult.h \
     client/qopcuaxvalue.h \
+    client/jbtopcuamonitoringitem.h \
+    client/jbtopcuamonitoringresult.h \
 
 qtConfig(gds) {
     # Only added for platforms that have OpenSSL available

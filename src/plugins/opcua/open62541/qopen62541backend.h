@@ -71,6 +71,8 @@ public Q_SLOTS:
 
     void readNodeAttributes(const QVector<QOpcUaReadItem> &nodesToRead);
     void writeNodeAttributes(const QVector<QOpcUaWriteItem> &nodesToWrite);
+    
+    void enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor, const QVector<quint64> &handlers);
 
     // Node management
     void addNode(const QOpcUaAddNodeItem &nodeToAdd);
