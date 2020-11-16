@@ -39,6 +39,7 @@
 
 #include "qopen62541.h"
 #include <QtOpcUa/qopcuanode.h>
+#include <QtOpcUa/jbtopcuamonitoringresult.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -67,16 +68,20 @@ public:
 
     void sendTimeoutNotification();
 
+    void addAttributesMonitoredItems(QVector<std::tuple<quint64, QOpcUa::NodeAttribute, UA_NodeId, QOpen62541Subscription*, QOpcUaMonitoringParameters, JBTOpcUaMonitoringResult*>>& items);
+
     struct MonitoredItem {
         quint64 handle;
         QOpcUa::NodeAttribute attr;
         UA_UInt32 monitoredItemId;
+        QString nodeId;
         UA_UInt32 clientHandle;
         QOpcUaMonitoringParameters parameters;
-        MonitoredItem(quint64 h, QOpcUa::NodeAttribute a, UA_UInt32 id)
+        MonitoredItem(quint64 h, QOpcUa::NodeAttribute a, UA_UInt32 id, const QString& n)
             : handle(h)
             , attr(a)
             , monitoredItemId(id)
+            , nodeId(n)
         {}
         MonitoredItem()
             : handle(0)

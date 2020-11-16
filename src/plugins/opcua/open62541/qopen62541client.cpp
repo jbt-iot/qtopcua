@@ -177,4 +177,34 @@ QVector<QOpcUaUserTokenPolicy::TokenType> QOpen62541Client::supportedUserTokenTy
     };
 }
 
+bool QOpen62541Client::enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor)
+{
+    QVector<quint64> handlers;
+    handlers.reserve(nodesToMonitor.size());
+    for(auto& nodeToMonitor: nodesToMonitor)
+    {
+        UA_NodeId uaNodeId = Open62541Utils::nodeIdFromQString(nodeToMonitor.nodeId());
+        if (UA_NodeId_isNull(&uaNodeId))
+        {
+            return false;
+        }
+
+        QScopedPointer<QOpen62541Node, QScopedPointerDeleteLater> tempNode(new QOpen62541Node(uaNodeId, this, nodeToMonitor.nodeId()));
+        if (!tempNode->registered())
+        {
+            qCDebug(QT_OPCUA_PLUGINS_OPEN62541) << "Failed to register node with backend, maximum number of nodes reached.";
+            return false;
+        }
+
+        handlers.push_back(tempNode->handle());
+    }
+
+    return QMetaObject::invokeMethod(m_backend
+                                    ,"enableMonitoring"
+                                    ,Qt::QueuedConnection
+                                    ,Q_ARG(QVector<JBTOpcUaMonitoringItem>, nodesToMonitor)
+                                    ,Q_ARG(QVector<quint64>, handlers)
+                                    );
+}
+
 QT_END_NAMESPACE
