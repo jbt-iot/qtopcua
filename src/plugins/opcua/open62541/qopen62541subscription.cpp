@@ -319,7 +319,7 @@ bool QOpen62541Subscription::addAttributeMonitoredItem(quint64 handle, QOpcUa::N
         return false;
     }
 
-    MonitoredItem *temp = new MonitoredItem(handle, attr, res.monitoredItemId);
+    MonitoredItem *temp = new MonitoredItem(handle, attr, res.monitoredItemId, Open62541Utils::nodeIdToQString(id));
     m_nodeHandleToItemMapping[handle][attr] = temp;
     m_itemIdToItemMapping[res.monitoredItemId] = temp;
 
@@ -344,6 +344,148 @@ bool QOpen62541Subscription::addAttributeMonitoredItem(quint64 handle, QOpcUa::N
     emit m_backend->monitoringEnableDisable(handle, attr, true, s);
 
     return true;
+}
+
+void QOpen62541Subscription::addAttributesMonitoredItems(QVector<std::tuple<quint64, QOpcUa::NodeAttribute, UA_NodeId, QOpen62541Subscription*, QOpcUaMonitoringParameters, JBTOpcUaMonitoringResult*>>& items)
+{
+    UA_CreateMonitoredItemsRequest request;
+    UA_CreateMonitoredItemsRequest_init(&request);
+    //UaDeleter<UA_CreateMonitoredItemsRequest> requestDeleter(&request, UA_CreateMonitoredItemsRequest_deleteMembers);
+    request.subscriptionId = m_subscriptionId;
+    request.timestampsToReturn = UA_TIMESTAMPSTORETURN_BOTH;
+
+    QVector<UA_MonitoredItemCreateRequest> reqs;
+    QVector<void*> contexts;
+    QVector<UA_Client_DataChangeNotificationCallback> callbacks;
+    QVector<UA_Client_DeleteMonitoredItemCallback> deleteCallbacks;
+    QVector<quint64> handlers;
+    QVector<JBTOpcUaMonitoringResult*> mrs;
+    QVector<QOpcUaMonitoringParameters*> psettings;
+
+    reqs.reserve(items.size());
+    contexts.reserve(items.size());
+    callbacks.reserve(items.size());
+    deleteCallbacks.reserve(items.size());
+    handlers.reserve(items.size());
+    mrs.reserve(items.size());
+    psettings.reserve(items.size());
+    for(auto& item: items)
+    {
+        UA_MonitoredItemCreateRequest req;
+        UA_MonitoredItemCreateRequest_init(&req);
+        req.itemToMonitor.attributeId = QOpen62541ValueConverter::toUaAttributeId(std::get<1>(item));
+        UA_NodeId_copy(&std::get<2>(item), &(req.itemToMonitor.nodeId));
+        if (std::get<4>(item).indexRange().size())
+            QOpen62541ValueConverter::scalarFromQt<UA_String, QString>(std::get<4>(item).indexRange(), &req.itemToMonitor.indexRange);
+        req.monitoringMode = static_cast<UA_MonitoringMode>(std::get<4>(item).monitoringMode());
+        req.requestedParameters.samplingInterval = qFuzzyCompare(std::get<4>(item).samplingInterval(), 0.0) ? m_interval : std::get<4>(item).samplingInterval();
+        req.requestedParameters.queueSize = std::get<4>(item).queueSize() == 0 ? 1 : std::get<4>(item).queueSize();
+        req.requestedParameters.discardOldest = std::get<4>(item).discardOldest();
+        req.requestedParameters.clientHandle = ++m_clientHandle;
+
+        if (std::get<4>(item).filter().isValid()) {
+            UA_ExtensionObject filter = createFilter(std::get<4>(item).filter());
+            if (filter.content.decoded.data)
+                req.requestedParameters.filter = filter;
+            else {
+                qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not create monitored item, filter creation failed";
+                QOpcUaMonitoringParameters s;
+                s.setStatusCode(QOpcUa::UaStatusCode::BadInternalError);
+                emit m_backend->monitoringEnableDisable(std::get<0>(item), std::get<1>(item), true, s);
+
+                JBTOpcUaMonitoringResult* out_res = std::get<5>(item);
+                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+                mr[std::get<1>(item)] = QOpcUa::UaStatusCode::BadInternalError;
+                out_res->setMonitorResults(mr);
+
+                UA_MonitoredItemCreateRequest_deleteMembers(&req);
+                continue;
+            }
+        }
+
+        reqs.push_back(req);
+        contexts.push_back(this);
+        callbacks.push_back(monitoredValueHandler);
+        deleteCallbacks.push_back(nullptr);
+        handlers.push_back(std::get<0>(item));
+        mrs.push_back(std::get<5>(item));
+        psettings.push_back(&std::get<4>(item));
+    }
+
+    request.itemsToCreate = (UA_MonitoredItemCreateRequest*)(uintptr_t)reqs.data();
+    request.itemsToCreateSize = reqs.size();
+
+    UA_CreateMonitoredItemsResponse response = UA_Client_MonitoredItems_createDataChanges(m_backend->m_uaclient, request, contexts.data(), callbacks.data(), deleteCallbacks.data());
+    UaDeleter<UA_CreateMonitoredItemsResponse> responseDeleter(&response, UA_CreateMonitoredItemsResponse_deleteMembers);
+
+    if(response.responseHeader.serviceResult == UA_STATUSCODE_GOOD)
+    {
+        for(size_t index = 0; index < response.resultsSize; ++index)
+        {
+            UA_MonitoredItemCreateResult res = response.results[index];
+            QOpcUa::NodeAttribute attr = static_cast<QOpcUa::NodeAttribute>(1 << (reqs.at(index).itemToMonitor.attributeId - 1));
+
+            if (res.statusCode != UA_STATUSCODE_GOOD)
+            {
+                qCWarning(QT_OPCUA_PLUGINS_OPEN62541) << "Could not add monitored item for" << attr << "of node" << Open62541Utils::nodeIdToQString(reqs.at(index).itemToMonitor.nodeId) << ":" << UA_StatusCode_name(res.statusCode);
+                QOpcUaMonitoringParameters s;
+                s.setStatusCode(static_cast<QOpcUa::UaStatusCode>(res.statusCode));
+                emit m_backend->monitoringEnableDisable(handlers.at(index), attr, true, s);
+
+                JBTOpcUaMonitoringResult* out_res = mrs.at(index);
+                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+                mr[attr] = static_cast<QOpcUa::UaStatusCode>(res.statusCode);
+                out_res->setMonitorResults(mr);
+
+                continue;
+            }
+
+            MonitoredItem *temp = new MonitoredItem(handlers.at(index), attr, res.monitoredItemId, Open62541Utils::nodeIdToQString(reqs.at(index).itemToMonitor.nodeId));
+            m_nodeHandleToItemMapping[handlers.at(index)][attr] = temp;
+            m_itemIdToItemMapping[res.monitoredItemId] = temp;
+
+            QOpcUaMonitoringParameters s = *psettings.at(index);
+            s.setSubscriptionId(m_subscriptionId);
+            s.setPublishingInterval(m_interval);
+            s.setMaxKeepAliveCount(m_maxKeepaliveCount);
+            s.setLifetimeCount(m_lifetimeCount);
+            s.setStatusCode(QOpcUa::UaStatusCode::Good);
+            s.setSamplingInterval(res.revisedSamplingInterval);
+            s.setQueueSize(res.revisedQueueSize);
+            s.setMonitoredItemId(res.monitoredItemId);
+            temp->parameters = s;
+            temp->clientHandle = m_clientHandle;
+
+            if (res.filterResult.encoding >= UA_EXTENSIONOBJECT_DECODED &&
+                    res.filterResult.content.decoded.type == &UA_TYPES[UA_TYPES_EVENTFILTERRESULT])
+                s.setFilterResult(convertEventFilterResult(&res.filterResult));
+            else
+                s.clearFilterResult();
+
+            emit m_backend->monitoringEnableDisable(handlers.at(index), attr, true, s);
+
+            JBTOpcUaMonitoringResult* out_res = mrs.at(index);
+            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+            mr[attr] = static_cast<QOpcUa::UaStatusCode>(res.statusCode);
+            out_res->setMonitorResults(mr);
+        }
+    }
+    else
+    {
+        for(int index = 0; index < reqs.size(); ++index)
+        {
+            QOpcUa::NodeAttribute attr = static_cast<QOpcUa::NodeAttribute>(1 << (reqs.at(index).itemToMonitor.attributeId - 1));
+            JBTOpcUaMonitoringResult* out_res = mrs.at(index);
+            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+            mr[attr] = static_cast<QOpcUa::UaStatusCode>(response.responseHeader.serviceResult);
+            out_res->setMonitorResults(mr);
+        }
+    }
+
+    for(auto& req: reqs)
+    {
+        UA_MonitoredItemCreateRequest_deleteMembers(&req);
+    }
 }
 
 bool QOpen62541Subscription::removeAttributeMonitoredItem(quint64 handle, QOpcUa::NodeAttribute attr)
@@ -438,6 +580,8 @@ void QOpen62541Subscription::monitoredValuesPostUpdated(QVector<UA_UInt32> monId
             res.setSourceTimestamp(QOpen62541ValueConverter::scalarToQt<QDateTime, UA_DateTime>(&values[index]->sourceTimestamp));
         }
         res.setStatusCode(QOpcUa::UaStatusCode::Good);
+
+        res.setNodeId(item.value()->nodeId);
 
         handles.push_back(item.value()->handle);
         results.push_back(res);

@@ -49,6 +49,8 @@
 #include <QtOpcUa/qopcuaaddreferenceitem.h>
 #include <QtOpcUa/qopcuadeletereferenceitem.h>
 #include <QtOpcUa/qopcuaendpointdescription.h>
+#include <QtOpcUa/jbtopcuamonitoringitem.h>
+#include <QtOpcUa/jbtopcuamonitoringresult.h>
 
 #include <QtCore/qobject.h>
 #include <QtCore/qurl.h>
@@ -141,6 +143,8 @@ public:
     QStringList supportedSecurityPolicies() const;
     QVector<QOpcUaUserTokenPolicy::TokenType> supportedUserTokenTypes() const;
 
+    bool enableMonitoring(const QVector<JBTOpcUaMonitoringItem> &nodesToMonitor);
+
 Q_SIGNALS:
     void connected();
     void disconnected();
@@ -161,6 +165,7 @@ Q_SIGNALS:
                               QOpcUa::UaStatusCode statusCode);
     void passwordForPrivateKeyRequired(QString keyFilePath, QString *password, bool previousTryWasInvalid);
     void dataChangesOccurred(QVector<QOpcUaReadResult> results);
+    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitorResults, QOpcUa::UaStatusCode serviceResult);
 
 private:
     Q_DISABLE_COPY(QOpcUaClient)
