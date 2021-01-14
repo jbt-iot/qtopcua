@@ -92,7 +92,7 @@ UA_NodeId Open62541Utils::nodeIdFromQString(const QString &name)
         return UA_NODEID_GUID(namespaceIndex, guid);
     }
     case 'b': {
-        const QByteArray temp = QByteArray::fromBase64(identifierString.toLatin1());
+        const QByteArray temp = QByteArray::fromBase64(identifierString.toUtf8().constData());
         if (temp.size() > 0) {
             return UA_NODEID_BYTESTRING_ALLOC(namespaceIndex, temp.constData());
         }
@@ -108,15 +108,18 @@ UA_NodeId Open62541Utils::nodeIdFromQString(const QString &name)
 
 QString Open62541Utils::nodeIdToQString(UA_NodeId id)
 {
-    QString result = QString::fromLatin1("ns=%1;").arg(id.namespaceIndex);
+    QString result{QString("ns=")};
+    result.append(QString::number(id.namespaceIndex));
+    result.append(";");
 
     switch (id.identifierType) {
     case UA_NODEIDTYPE_NUMERIC:
-        result.append(QString::fromLatin1("i=%1").arg(id.identifier.numeric));
+        result.append(QString("i="));
+        result.append(QString::number(id.identifier.numeric));
         break;
     case UA_NODEIDTYPE_STRING:
-        result.append(QLatin1String("s="));
-        result.append(QString::fromUtf8(reinterpret_cast<char *>(id.identifier.string.data),
+        result.append(QString("s="));
+        result.append(QString::fromLocal8Bit(reinterpret_cast<char *>(id.identifier.string.data),
                                              id.identifier.string.length));
         break;
     case UA_NODEIDTYPE_GUID: {
