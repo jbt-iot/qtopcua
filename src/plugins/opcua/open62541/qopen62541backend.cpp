@@ -595,7 +595,7 @@ void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringIte
         const JBTOpcUaMonitoringItem& nodeToMonitor = nodesToMonitor.at(index);
         const quint64& handle = handlers.at(index);
         QOpcUaMonitoringParameters settings = nodeToMonitor.settings();
-        QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> monitorResults;
+        QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> monitoringResults;
 
         UA_NodeId id = Open62541Utils::nodeIdFromQString(nodeToMonitor.nodeId());
         //UaDeleter<UA_NodeId> nodeIdDeleter(&id, UA_NodeId_deleteMembers);
@@ -614,10 +614,10 @@ void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringIte
                     QOpcUaMonitoringParameters s;
                     s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
                     emit monitoringEnableDisable(handle, attribute, true, s);
-                    monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+                    monitoringResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
                 });
 
-                results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+                results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitoringResults, settings));
                 UA_NodeId_deleteMembers(&id);
                 continue;
             }
@@ -635,10 +635,10 @@ void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringIte
                 QOpcUaMonitoringParameters s;
                 s.setStatusCode(QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
                 emit monitoringEnableDisable(handle, attribute, true, s);
-                monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
+                monitoringResults.insert(attribute, QOpcUa::UaStatusCode::BadSubscriptionIdInvalid);
             });
 
-            results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+            results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitoringResults, settings));
             UA_NodeId_deleteMembers(&id);
             continue;
         }
@@ -650,18 +650,18 @@ void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringIte
                 QOpcUaMonitoringParameters s;
                 s.setStatusCode(QOpcUa::UaStatusCode::BadEntryExists);
                 emit monitoringEnableDisable(handle, attribute, true, s);
-                monitorResults.insert(attribute, QOpcUa::UaStatusCode::BadEntryExists);
+                monitoringResults.insert(attribute, QOpcUa::UaStatusCode::BadEntryExists);
             }
             else
             {
-                monitorResults.insert(attribute, QOpcUa::UaStatusCode::GoodResultsMayBeIncomplete);
+                monitoringResults.insert(attribute, QOpcUa::UaStatusCode::GoodResultsMayBeIncomplete);
                 input_data.push_back(std::make_tuple(handle, attribute, id, usedSubscription, settings, nullptr));
             }
         });
-        results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitorResults));
+        results.push_back(JBTOpcUaMonitoringResult(nodeToMonitor.nodeId(), monitoringResults, settings));
 
         JBTOpcUaMonitoringResult& mr = results.last();
-        int keys_size = mr.monitorResults().keys().size();
+        int keys_size = mr.monitoringResults().keys().size();
         for(auto it = input_data.rbegin(); it != input_data.rend(), keys_size != 0; ++it, --keys_size)
         {
             std::get<5>(*it) = &mr;
@@ -674,7 +674,7 @@ void Open62541AsyncBackend::enableMonitoring(const QVector<JBTOpcUaMonitoringIte
 
         for(std::tuple<quint64, QOpcUa::NodeAttribute, UA_NodeId, QOpen62541Subscription*, QOpcUaMonitoringParameters, JBTOpcUaMonitoringResult*>& input: input_data)
         {
-            if(std::get<5>(input)->monitorResults()[std::get<1>(input)] == QOpcUa::UaStatusCode::Good)
+            if(std::get<5>(input)->monitoringResults()[std::get<1>(input)] == QOpcUa::UaStatusCode::Good)
             {
                 m_attributeMapping[std::get<0>(input)][std::get<1>(input)] = std::get<3>(input);
             }

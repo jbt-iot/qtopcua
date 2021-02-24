@@ -133,7 +133,7 @@ signals:
     void connectError(QOpcUaErrorState *errorState);
     void passwordForPrivateKeyRequired(const QString keyFilePath, QString *password, bool previousTryWasInvalid);
     void dataChangesOccurred(QVector<QOpcUaReadResult> results);
-    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitorResults, QOpcUa::UaStatusCode serviceResult);
+    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitoringResults, QOpcUa::UaStatusCode serviceResult);
 
 private:
     Q_DISABLE_COPY(QOpcUaClientImpl)
