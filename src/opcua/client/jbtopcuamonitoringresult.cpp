@@ -6,7 +6,8 @@ class JBTOpcUaMonitoringResultData : public QSharedData
 {
 public:
     QString nodeId;
-    QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> monitorResults;
+    QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> monitoringResults;
+    QOpcUaMonitoringParameters monitoringParametersResult;
 };
 
 JBTOpcUaMonitoringResult::JBTOpcUaMonitoringResult()
@@ -19,11 +20,15 @@ JBTOpcUaMonitoringResult::JBTOpcUaMonitoringResult(const JBTOpcUaMonitoringResul
 {
 }
 
-JBTOpcUaMonitoringResult::JBTOpcUaMonitoringResult(const QString &nodeId, const QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> &monitorResults)
+JBTOpcUaMonitoringResult::JBTOpcUaMonitoringResult(const QString &nodeId,
+                                                   const QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> &monitoringResults, 
+                                                   const QOpcUaMonitoringParameters& monitoringParametersResult
+                                                  )
     : data(new JBTOpcUaMonitoringResultData)
 {
     setNodeId(nodeId);
-    setMonitorResults(monitorResults);
+    setMonitoringResults(monitoringResults);
+    setMonitoringParametersResult(monitoringParametersResult);
 }
 
 JBTOpcUaMonitoringResult &JBTOpcUaMonitoringResult::operator=(const JBTOpcUaMonitoringResult &rhs)
@@ -47,14 +52,24 @@ void JBTOpcUaMonitoringResult::setNodeId(const QString &nodeId)
     data->nodeId = nodeId;
 }
 
-QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> JBTOpcUaMonitoringResult::monitorResults() const
+QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> JBTOpcUaMonitoringResult::monitoringResults() const
 {
-    return data->monitorResults;
+    return data->monitoringResults;
 }
 
-void JBTOpcUaMonitoringResult::setMonitorResults(const QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> &monitorResults)
+void JBTOpcUaMonitoringResult::setMonitoringResults(const QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> &monitoringResults)
 {
-    data->monitorResults = monitorResults;
+    data->monitoringResults = monitoringResults;
+}
+
+QOpcUaMonitoringParameters JBTOpcUaMonitoringResult::monitoringParametersResult() const
+{
+    return data->monitoringParametersResult;
+}
+
+void JBTOpcUaMonitoringResult::setMonitoringParametersResult(const QOpcUaMonitoringParameters& monitoringParametersResult)
+{
+    data->monitoringParametersResult = monitoringParametersResult;
 }
 
 QT_END_NAMESPACE

@@ -394,9 +394,9 @@ void QOpen62541Subscription::addAttributesMonitoredItems(QVector<std::tuple<quin
                 emit m_backend->monitoringEnableDisable(std::get<0>(item), std::get<1>(item), true, s);
 
                 JBTOpcUaMonitoringResult* out_res = std::get<5>(item);
-                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitoringResults();
                 mr[std::get<1>(item)] = QOpcUa::UaStatusCode::BadInternalError;
-                out_res->setMonitorResults(mr);
+                out_res->setMonitoringResults(mr);
 
                 UA_MonitoredItemCreateRequest_deleteMembers(&req);
                 continue;
@@ -433,9 +433,9 @@ void QOpen62541Subscription::addAttributesMonitoredItems(QVector<std::tuple<quin
                 emit m_backend->monitoringEnableDisable(handlers.at(index), attr, true, s);
 
                 JBTOpcUaMonitoringResult* out_res = mrs.at(index);
-                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+                QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitoringResults();
                 mr[attr] = static_cast<QOpcUa::UaStatusCode>(res.statusCode);
-                out_res->setMonitorResults(mr);
+                out_res->setMonitoringResults(mr);
 
                 continue;
             }
@@ -465,9 +465,10 @@ void QOpen62541Subscription::addAttributesMonitoredItems(QVector<std::tuple<quin
             emit m_backend->monitoringEnableDisable(handlers.at(index), attr, true, s);
 
             JBTOpcUaMonitoringResult* out_res = mrs.at(index);
-            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitoringResults();
             mr[attr] = static_cast<QOpcUa::UaStatusCode>(res.statusCode);
-            out_res->setMonitorResults(mr);
+            out_res->setMonitoringResults(mr);
+            out_res->setMonitoringParametersResult(s);
         }
     }
     else
@@ -476,9 +477,9 @@ void QOpen62541Subscription::addAttributesMonitoredItems(QVector<std::tuple<quin
         {
             QOpcUa::NodeAttribute attr = static_cast<QOpcUa::NodeAttribute>(1 << (reqs.at(index).itemToMonitor.attributeId - 1));
             JBTOpcUaMonitoringResult* out_res = mrs.at(index);
-            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitorResults();
+            QMap<QOpcUa::NodeAttribute, QOpcUa::UaStatusCode> mr = out_res->monitoringResults();
             mr[attr] = static_cast<QOpcUa::UaStatusCode>(response.responseHeader.serviceResult);
-            out_res->setMonitorResults(mr);
+            out_res->setMonitoringResults(mr);
         }
     }
 

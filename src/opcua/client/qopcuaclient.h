@@ -165,7 +165,7 @@ Q_SIGNALS:
                               QOpcUa::UaStatusCode statusCode);
     void passwordForPrivateKeyRequired(QString keyFilePath, QString *password, bool previousTryWasInvalid);
     void dataChangesOccurred(QVector<QOpcUaReadResult> results);
-    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitorResults, QOpcUa::UaStatusCode serviceResult);
+    void enableMonitoringFinished(QVector<JBTOpcUaMonitoringResult> monitoringResults, QOpcUa::UaStatusCode serviceResult);
 
 private:
     Q_DISABLE_COPY(QOpcUaClient)
